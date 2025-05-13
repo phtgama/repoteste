@@ -1,20 +1,31 @@
-# Starter pipeline
-# Start with a minimal pipeline that you can customize to build and deploy your code.
-# Add steps that build, run tests, deploy, and more:
-# https://aka.ms/yaml
-
 trigger:
 - main
 
 pool:
-  name: pipelinehq
-  vmImage: ubuntu-latest
+  name: pipelinehq  # agente auto-hospedado com Docker instalado
+
+variables:
+  acrName: registrycyclopay-abfzejg7fudecmhz.azurecr.io
+  imageName: $(acrName)/meuapp:testandoapipe
 
 steps:
-- script: echo Hello, world!
-  displayName: 'Run a one-line script'
+- script: |
+    echo "Criando Dockerfile..."
+    cat <<EOF > Dockerfile
+    FROM alpine:latest
+    RUN echo 'teste OK' > /etc/testandoapipe.txt
+    CMD ["cat", "/etc/testandoapipe.txt"]
+    EOF
+  displayName: Criar Dockerfile
 
 - script: |
-    echo Add other tasks to build, test, and deploy your project.
-    echo See https://aka.ms/yaml
-  displayName: 'Run a multi-line script'
+    docker build -t $(imageName) .
+  displayName: Build da imagem Docker
+
+- task: Docker@2
+  displayName: Push para o ACR
+  inputs:
+    containerRegistry: 'registrycyclopay'  # Nome da Service Connection
+    repository: 'meuapp'
+    command: 'push'
+    tags: 'testandoapipe'
